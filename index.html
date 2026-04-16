@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOOGLE — Local Event Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { 300: '#F0D878', 400: '#E8C864', 500: '#C8A24E', 600: '#A8853E', 700: '#8B6914' },
+                        surface: { 950: '#050505', 900: '#080808', 800: '#0F0F0F', 700: '#161616', 600: '#1E1E1E', 500: '#2A2A2A' }
+                    },
+                    fontFamily: {
+                        display: ['"Playfair Display"', 'serif'],
+                        body: ['"DM Sans"', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --gold: #C8A24E;
+            --gold-light: #E8C864;
+            --gold-glow: rgba(200, 162, 78, 0.3);
+            --bg: #050505;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #F5F0E8;
+            --text-secondary: #8A8478;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page {
+            display: none;
+            min-height: 100vh;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .page.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+        }
+
+        /* Masonry Grid (Reverted) */
+        .masonry-grid {
+            column-count: 2;
+            column-gap: 16px;
+        }
+
+        @media (min-width: 768px) {
+            .masonry-grid {
+                column-count: 3;
+                column-gap: 20px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .masonry-grid {
+                column-count: 4;
+                column-gap: 24px;
+            }
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: revealItem 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes revealItem {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .masonry-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .masonry-item:hover img {
+            transform: scale(1.08);
+        }
+
+        .masonry-item::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 60%);
+            opacity: 1;
+            transition: opacity 0.4s;
+            pointer-events: none;
+            /* Crucial: Let clicks pass through to the container */
+        }
+
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: #000000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .lightbox.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .lightbox-content {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Keeps the whole photo visible but fills the screen */
+            border-radius: 0;
+            margin: 0;
+            padding: 0;
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .hero-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+            filter: blur(60px);
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Marketing Modal Styles */
+        #marketingModal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9); /* Slightly darker for better shielding */
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        #marketingModal.open {
+            display: block;
+            opacity: 1;
+        }
+
+        .marketing-card {
+            background: #050505; /* Pure solid black */
+            border-top: 2px solid var(--gold);
+            border-left: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+            width: 100%;
+            max-width: 500px;
+            border-radius: 32px 32px 0 0;
+            padding: 40px 24px calc(60px + env(safe-area-inset-bottom, 20px)) 24px;
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translate(-50%, 100%);
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 2001;
+        }
+
+        /* The Ultimate Bottom Cover (Integrated) */
+        .marketing-card::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: -2px;
+            right: -2px;
+            height: 200vh;
+            background: #050505;
+            border-left: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+        }
+
+        #marketingModal.open .marketing-card {
+            transform: translate(-50%, 0);
+        }
+
+        .service-tag {
+            background: rgba(200, 162, 78, 0.1);
+            border: 1px solid rgba(200, 162, 78, 0.2);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: var(--gold-light);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen antialiased selection:bg-gold-500 selection:text-black">
+
+    <!-- Landing Page -->
+    <div id="pageLanding" class="page active relative overflow-hidden">
+        <div class="hero-glow animate-float"></div>
+        <main class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div class="mb-12 animate-float" style="animation-delay: -3s">
+                <i class="fa-solid fa-shield-halved text-7xl text-gold-500 mb-6 block drop-shadow-[0_0_15px_rgba(200,162,78,0.5)]"></i>
+                <h1 class="font-display text-4xl sm:text-7xl font-bold tracking-tight mb-4 text-white">
+                    PRIVACY<span class="text-gold-500 italic">First</span>
+                </h1>
+                <div class="h-1 w-24 bg-gold-500 mx-auto rounded-full mb-6"></div>
+                <p class="text-text-secondary text-lg max-w-sm mx-auto leading-relaxed">
+                    Personalized event gallery. <br>
+                    <span class="text-gold-300 font-medium">Verify your face to view your photos.</span>
+                </p>
+                <p class="mt-4 text-[11px] text-text-secondary/60 max-w-xs mx-auto italic uppercase tracking-wider">
+                    For guest safety, this gallery only displays photos where you are present.
+                </p>
+            </div>
+
+            <div class="w-full max-w-sm glass-card p-1 items-center justify-center">
+                <button onclick="startVerification()"
+                    class="group relative w-full bg-gold-500 overflow-hidden text-black font-bold py-5 rounded-[22px] transition-all hover:bg-gold-400">
+                    <span class="relative z-10 flex items-center justify-center gap-3 text-lg">
+                        IDENTIFY TO ACCESS
+                        <i class="fa-solid fa-user-check animate-pulse"></i>
+                    </span>
+                </button>
+            </div>
+            <p class="mt-8 text-[10px] text-text-secondary uppercase tracking-[0.3em] font-bold">Secure Local Environment</p>
+        </main>
+    </div>
+
+    <!-- Gallery Page -->
+    <div id="pageGallery" class="page bg-surface-950">
+        <header
+            class="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 py-3 sm:py-4">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <!-- Left Group: Back & Count -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="location.reload()"
+                        class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-text-secondary hover:text-white transition-all">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    </button>
+                    <div class="flex flex-col">
+                        <span id="photoCount"
+                            class="font-bold text-xs sm:text-sm text-gold-500 tracking-tight leading-none">0
+                            Photos</span>
+                        <p
+                            class="text-[7px] sm:text-[8px] text-text-secondary uppercase tracking-widest font-bold mt-0.5">
+                            Live Gallery</p>
+                    </div>
+                </div>
+
+                <!-- Right Group: Profile -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="location.reload()"
+                        class="flex items-center gap-2 bg-white/5 border border-white/10 text-text-secondary px-3 py-1.5 rounded-full font-bold text-[9px] uppercase hover:text-white transition-all">
+                        <i class="fa-solid fa-user-slash"></i>
+                        Switch Profile
+                    </button>
+
+                    <!-- Live Badge -->
+                    <div
+                        class="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full text-red-500">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_#ef4444]"></span>
+                        <span class="text-[9px] font-bold uppercase tracking-[0.1em]">Live</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-8">
+            <!-- Secure Status -->
+            <div id="filterStatus" class="flex items-center justify-between bg-gold-500/10 border border-gold-500/20 p-4 rounded-2xl mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold-500">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-wider">Secured View</p>
+                        <p class="text-[10px] text-gold-300">Displaying only your verified photos</p>
+                    </div>
+                </div>
+                <div class="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+                    Privacy Active
+                </div>
+            </div>
+
+            <div class="masonry-grid" id="galleryGrid">
+                <!-- Premium Images will glide here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Premium Lightbox -->
+    <div id="lightbox" class="lightbox">
+        <!-- Close Button -->
+        <div class="absolute top-6 right-6 text-white/50 text-4xl cursor-pointer hover:text-white transition-all z-50"
+            onclick="closeLightbox()">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+
+        <div class="lightbox-content" onclick="closeLightbox()">
+            <img id="lbImg" src="" alt="Live image" onclick="event.stopPropagation()">
+
+            <!-- Floating Download Button at bottom -->
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+                <a id="lbDownload" href="" download
+                    class="bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-gold-500 hover:text-black hover:border-gold-500 transition-all shadow-2xl">
+                    <i class="fa-solid fa-download"></i>
+                    SAVE TO DEVICE
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Soft-Exit Marketing Card -->
+    <div id="marketingModal" onclick="closeMarketing()">
+        <div class="marketing-card" onclick="event.stopPropagation()">
+            <div class="text-center mb-8">
+                <div class="w-16 h-1 bg-gold-500/20 mx-auto rounded-full mb-8"></div>
+                <p class="text-[10px] text-gold-500 font-black uppercase tracking-[0.3em] mb-3">Management by</p>
+                <h2 class="font-display text-5xl font-extrabold text-white mb-2 tracking-tight">GOOGLE</h2>
+                <div class="flex items-center justify-center gap-2 mb-6">
+                    <span class="h-px w-8 bg-gold-500/30"></span>
+                    <span class="text-text-secondary text-xs italic font-medium">Curated by GOKUL</span>
+                    <span class="h-px w-8 bg-gold-500/30"></span>
+                </div>
+            </div>
+
+            <div class="space-y-4 mb-10">
+                <div class="flex flex-wrap justify-center gap-3">
+                    <span class="service-tag"><i class="fa-solid fa-camera mr-2"></i>Photography</span>
+                    <span class="service-tag"><i class="fa-solid fa-video mr-2"></i>Videography</span>
+                    <span class="service-tag"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Event Management</span>
+                </div>
+                <p class="text-center text-text-secondary text-sm px-4">Capturing moments that last forever. Let us make your next event cinematic.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <a href="tel:8951085997" class="flex flex-col items-center justify-center gap-3 p-6 glass-card border-white/5 hover:border-gold-500/30 transition-all group">
+                    <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white group-hover:bg-gold-500 group-hover:text-black transition-all">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest">Call Gokul</span>
+                </a>
+                <a href="https://wa.me/918951085997" target="_blank" class="flex flex-col items-center justify-center gap-3 p-6 glass-card border-white/5 hover:border-green-500/30 transition-all group">
+                    <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white group-hover:bg-green-500 transition-all">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-text-secondary">WhatsApp</span>
+                </a>
+            </div>
+
+            <button onclick="closeMarketing()" class="w-full mt-8 text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em] hover:text-white transition-all underline underline-offset-8">
+                Continue to Gallery
+            </button>
+        </div>
+    </div>
+
+    <!-- Selfie / Camera Modal -->
+    <div id="selfieModal" class="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl hidden items-center justify-center p-4">
+        <div class="w-full max-w-md bg-surface-900 border border-white/10 rounded-[32px] overflow-hidden relative">
+            <!-- Close -->
+            <button onclick="closeSelfieModal()" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Video Preview -->
+            <div class="relative aspect-[3/4] bg-black flex items-center justify-center overflow-hidden">
+                <video id="webcam" autoplay playsinline class="w-full h-full object-cover grayscale blur-[2px] opacity-40 transition-all duration-700"></video>
+                <canvas id="snapshot" class="hidden"></canvas>
+                
+                <!-- Overlay Grids -->
+                <div class="absolute inset-0 border-[20px] border-surface-900 pointer-events-none"></div>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-64 h-80 border-2 border-gold-500/30 rounded-[100px] relative">
+                        <div class="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-gold-500/20 to-transparent animate-pulse-slow"></div>
+                    </div>
+                </div>
+
+                <!-- Searching State -->
+                <div id="searchOverlay" class="absolute inset-0 bg-black/80 hidden flex-col items-center justify-center text-center p-8">
+                    <div class="w-20 h-20 relative mb-6">
+                        <div class="absolute inset-0 border-4 border-gold-500/20 rounded-full"></div>
+                        <div class="absolute inset-0 border-4 border-gold-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold text-white mb-2">Analyzing Face...</h3>
+                    <p class="text-text-secondary text-sm">Searching the offline gallery engine</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="p-8 text-center">
+                <h2 id="selfieTitle" class="font-display text-2xl font-bold text-white mb-2">Selfie Search</h2>
+                <p id="selfieDesc" class="text-text-secondary text-sm mb-8">Align your face in the frame to find your photos in the live feed.</p>
+                
+                <button id="captureBtn" onclick="takeSnapshot()" class="w-full bg-gold-500 text-black font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-gold-400 transition-all">
+                    <i class="fa-solid fa-camera"></i>
+                    CAPTURE & SEARCH
+                </button>
+
+                <!-- Fallback Button -->
+                <button id="fallbackBtn" onclick="triggerFileInput()" class="hidden w-full bg-white/5 border border-white/10 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all mt-4">
+                    <i class="fa-solid fa-upload"></i>
+                    TAKE OR UPLOAD PHOTO
+                </button>
+                <input type="file" id="fileInput" accept="image/*" capture="user" class="hidden" onchange="handleFileSelect(event)">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImages = [];
+        let filteredImages = null;
+        let marketingShown = false;
+        let stream = null;
+
+        // Initialize History Trap
+        window.onload = () => {
+            if (window.history && window.history.pushState) {
+                window.history.pushState('forward', null, './#forward');
+                
+                window.onpopstate = function(event) {
+                    if (!marketingShown) {
+                        showMarketing();
+                        // Push state again so the second back actually exits
+                        window.history.pushState('forward', null, './#forward');
+                    }
+                };
+            }
+        };
+
+        function showMarketing() {
+            marketingShown = true;
+            document.body.style.overflow = 'hidden'; // Lock background scroll
+            const modal = document.getElementById('marketingModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('open'), 10);
+        }
+
+        function closeMarketing() {
+            document.body.style.overflow = ''; // Unlock background scroll
+            const modal = document.getElementById('marketingModal');
+            modal.classList.remove('open');
+            setTimeout(() => modal.style.display = 'none', 500);
+        }
+
+        function startVerification() {
+            openSelfieModal();
+        }
+
+        function accessGallery() {
+            document.getElementById('pageLanding').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('pageLanding').classList.remove('active');
+                const gallery = document.getElementById('pageGallery');
+                gallery.classList.add('active');
+                setTimeout(() => gallery.style.opacity = '1', 50);
+                
+                // Start background sync
+                setInterval(() => {
+                    if (filteredImages) loadPhotos();
+                }, 4000);
+            }, 600);
+        }
+
+        async function openSelfieModal() {
+            const modal = document.getElementById('selfieModal');
+            const video = document.getElementById('webcam');
+            modal.style.display = 'flex';
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+                video.classList.remove('grayscale', 'blur-[2px]', 'opacity-40');
+                document.getElementById('captureBtn').style.display = 'flex';
+                document.getElementById('fallbackBtn').classList.add('hidden');
+            } catch (err) {
+                console.warn("Camera stream failed, showing fallback:", err);
+                document.getElementById('captureBtn').style.display = 'none';
+                document.getElementById('fallbackBtn').classList.remove('hidden');
+                document.getElementById('selfieDesc').textContent = "Live camera access restricted by browser. Please use the button below to take or upload a photo.";
+            }
+        }
+
+        function triggerFileInput() {
+            document.getElementById('fileInput').click();
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Show searching overlay
+            document.getElementById('searchOverlay').classList.remove('hidden');
+            
+            try {
+                const formData = new FormData();
+                formData.append('selfie', file);
+                await processSelfie(formData);
+            } catch (err) {
+                console.error(err);
+                alert("Upload failed.");
+                document.getElementById('searchOverlay').classList.add('hidden');
+            }
+        }
+
+        function closeSelfieModal() {
+            const modal = document.getElementById('selfieModal');
+            const video = document.getElementById('webcam');
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            video.classList.add('grayscale', 'blur-[2px]', 'opacity-40');
+            modal.style.display = 'none';
+            document.getElementById('searchOverlay').classList.add('hidden');
+        }
+
+        async function takeSnapshot() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('snapshot');
+            const overlay = document.getElementById('searchOverlay');
+            
+            // Setup canvas
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            // Show searching overlay
+            overlay.classList.remove('hidden');
+
+            try {
+                // Convert to blob
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                const formData = new FormData();
+                formData.append('selfie', blob, 'selfie.jpg');
+
+                await processSelfie(formData);
+            } catch (err) {
+                console.error(err);
+                alert("Identity verification failed. Please check your connection.");
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        async function processSelfie(formData) {
+            // Smart Backend Detection
+            const tunnelUrl = window.location.hash.substring(1);
+            const apiBase = tunnelUrl ? tunnelUrl : '';
+            
+            const response = await fetch(`${apiBase}/api/face-search`, {
+                method: 'POST',
+                headers: {
+                    'Bypass-Tunnel-Reminder': 'true'
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            
+            if (result.matches) {
+                if (result.matches.length === 0) {
+                    alert("We couldn't find your photos yet. Please try again after a few minutes!");
+                } else {
+                    // Store the identity
+                    filteredNames = result.matches;
+                    
+                    // Cloud Mode: matches already contain the URLs
+                    if (filteredNames.length > 0 && typeof filteredNames[0] === 'object') {
+                        filteredImages = filteredNames; // Take directly from search result
+                        document.getElementById('photoCount').textContent = `${filteredImages.length} Photos`;
+                        renderGrid(filteredImages);
+                    } else {
+                        // Local Mode: fetch full list and filter
+                        await loadPhotos();
+                    }
+
+                    // If we are still on landing page, move to gallery
+                    if (document.getElementById('pageLanding').classList.contains('active')) {
+                        accessGallery();
+                    }
+                    closeSelfieModal();
+                }
+            } else if (result.error) {
+                alert(result.error);
+            }
+        }
+
+        let filteredNames = null;
+
+        function clearFilter() {
+            filteredImages = null;
+            document.getElementById('filterStatus').style.display = 'none';
+            renderGrid(currentImages);
+        }
+
+        async function loadPhotos() {
+            // Smart Backend Detection
+            const tunnelUrl = window.location.hash.substring(1);
+            const apiBase = tunnelUrl ? tunnelUrl : '';
+
+            // Skip background loading if we already have cloud-synced images
+            if (filteredImages && filteredImages.length > 0 && filteredImages[0].url.startsWith('http')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBase}/api/photos`, {
+                    headers: {
+                        'Bypass-Tunnel-Reminder': 'true'
+                    }
+                });
+                const allPhotos = await response.json();
+
+                // Store all photos
+                currentImages = allPhotos;
+                
+                // Filter if user is identified in local mode
+                if (filteredNames && Array.isArray(filteredNames) && typeof filteredNames[0] === 'string') {
+                    filteredImages = allPhotos.filter(img => filteredNames.includes(img.name));
+                    document.getElementById('photoCount').textContent = `${filteredImages.length} Photos`;
+                    renderGrid(filteredImages);
+                }
+            } catch (err) {
+                console.warn('Sync delayed...', err);
+            }
+        }
+
+        function renderGrid(images) {
+            const grid = document.getElementById('galleryGrid');
+            grid.innerHTML = '';
+
+            images.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'masonry-item group cursor-pointer';
+                item.style.animationDelay = `${index * 0.1}s`;
+                item.onclick = () => openLightbox(img.url); // Click handler on entire card
+
+                // Image element
+                const imgEl = document.createElement('img');
+                imgEl.src = img.url;
+                imgEl.alt = img.name;
+                imgEl.loading = 'lazy';
+
+                // Quick download button overlay
+                const dlBtn = document.createElement('a');
+                dlBtn.href = img.url;
+                dlBtn.download = img.name;
+                dlBtn.className = 'absolute bottom-4 right-4 w-10 h-10 bg-gold-500 text-black rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-10 shadow-lg';
+                dlBtn.innerHTML = '<i class="fa-solid fa-download"></i>';
+                dlBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent opening lightbox when clicking download
+                };
+
+                item.appendChild(imgEl);
+                item.appendChild(dlBtn);
+                grid.appendChild(item);
+            });
+        }
+
+        function openLightbox(url) {
+            const lb = document.getElementById('lightbox');
+            const lbImg = document.getElementById('lbImg');
+            const lbDl = document.getElementById('lbDownload');
+
+            lbImg.src = url;
+            lbDl.href = url;
+            lbDl.setAttribute('download', url.split('/').pop());
+            lb.classList.add('open');
+
+            // Request Actual Browser Fullscreen
+            if (lb.requestFullscreen) {
+                lb.requestFullscreen().catch(err => console.warn("Fullscreen blocked:", err));
+            } else if (lb.webkitRequestFullscreen) {
+                lb.webkitRequestFullscreen();
+            }
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('open');
+
+            // Exit Browser Fullscreen
+            if (document.fullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

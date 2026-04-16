@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOOGLE Admin — Premium Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { 300: '#F0D878', 400: '#E8C864', 500: '#C8A24E', 600: '#A8853E', 700: '#8B6914' },
+                        surface: { 950: '#050505', 900: '#080808', 800: '#0F0F0F', 700: '#161616', 600: '#1E1E1E', 500: '#2A2A2A' }
+                    },
+                    fontFamily: {
+                        display: ['"Playfair Display"', 'serif'],
+                        body: ['"DM Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+        :root {
+            --gold: #C8A24E;
+            --gold-light: #E8C864;
+            --bg: #050505;
+            --card-bg: rgba(255, 255, 255, 0.035);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #F5F0E8;
+            --text-secondary: #8A8478;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(24px);
+            border-radius: 20px;
+        }
+
+        .nav-link.active {
+            color: var(--gold);
+            background: rgba(200, 162, 78, 0.08);
+            border-radius: 12px;
+        }
+
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #adminLock {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .passcode-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 16px;
+            color: white;
+            text-align: center;
+            font-size: 28px;
+            width: 280px;
+            letter-spacing: 0.5em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .passcode-input:focus {
+            border-color: var(--gold);
+        }
+
+        .btn-gold {
+            background: var(--gold);
+            color: black;
+            font-weight: 700;
+            padding: 14px 28px;
+            border-radius: 14px;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 25px rgba(200, 162, 78, 0.4);
+        }
+
+        #sidebar {
+            width: 280px;
+            background: rgba(8, 8, 8, 0.8);
+            border-right: 1px solid var(--card-border);
+            backdrop-filter: blur(200px);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            padding: 2rem 1.5rem;
+        }
+
+        .main-container {
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 1024px) {
+            #sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            #sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-container {
+                margin-left: 0;
+            }
+        }
+
+        .image-card {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: var(--surface-900);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+
+        .image-card:hover img {
+            transform: scale(1.1);
+        }
+
+        .image-card .overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 1rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .image-card:hover .overlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="antialiased selection:bg-gold-500 selection:text-black">
+
+    <!-- Admin Lock -->
+    <div id="adminLock">
+        <div class="text-center animate-reveal">
+            <i
+                class="fa-solid fa-shield-halved text-6xl text-gold-500 mb-8 block drop-shadow-[0_0_15px_rgba(200,162,78,0.3)]"></i>
+            <h1 class="font-display text-4xl font-bold mb-8 italic">Admin Portal</h1>
+            <div class="space-y-6">
+                <input type="password" id="adminPasscode" class="passcode-input" placeholder="••••" maxlength="4">
+                <button onclick="verifyAdmin()" class="btn-gold w-full flex items-center justify-center gap-3">
+                    Unlock System <i class="fa-solid fa-unlock"></i>
+                </button>
+            </div>
+            <p class="mt-8 text-[10px] text-text-secondary uppercase tracking-[0.3em]">Master Access Only</p>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="hidden flex-col">
+        <div class="flex items-center gap-4 mb-12">
+            <div class="w-10 h-10 bg-gold-500 rounded-xl flex items-center justify-center shadow-lg shadow-gold-500/20">
+                <i class="fa-solid fa-bolt text-black text-xl"></i>
+            </div>
+            <h2 class="font-bold text-xl tracking-tight">GOOGLELive <span
+                    class="text-gold-500 italic text-sm">Pro</span>
+            </h2>
+        </div>
+
+        <nav class="space-y-2 flex-1">
+            <button onclick="switchTab('stats')"
+                class="nav-link w-full text-left p-4 flex items-center gap-4 text-text-secondary hover:text-white transition-all active">
+                <i class="fa-solid fa-chart-line w-6"></i> Dashboard
+            </button>
+            <button onclick="switchTab('photos')"
+                class="nav-link w-full text-left p-4 flex items-center gap-4 text-text-secondary hover:text-white transition-all">
+                <i class="fa-solid fa-images w-6"></i> Moderation
+            </button>
+            <button onclick="switchTab('upload')"
+                class="nav-link w-full text-left p-4 flex items-center gap-4 text-text-secondary hover:text-white transition-all">
+                <i class="fa-solid fa-cloud-arrow-up w-6"></i> Direct Upload
+            </button>
+        </nav>
+
+        <div class="mt-auto pt-6 border-t border-white/5">
+            <button onclick="location.reload()"
+                class="w-full text-left p-4 text-red-500 hover:text-red-400 flex items-center gap-4 text-sm font-bold uppercase tracking-widest transition-all">
+                <i class="fa-solid fa-power-off w-6"></i> Exit Dashboard
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div id="adminDashboard" class="hidden main-container flex flex-col">
+        <header class="p-8 flex items-center justify-between">
+            <div>
+                <h1 class="font-display text-4xl font-bold mb-1" id="tabTitle">System Dashboard</h1>
+                <p class="text-xs text-text-secondary font-bold uppercase tracking-[0.2em]">Connected to SnapLive Cloud Gallery</p>
+            </div>
+            <button onclick="document.getElementById('sidebar').classList.toggle('open')"
+                class="lg:hidden w-12 h-12 glass-card flex items-center justify-center text-gold-500">
+                <i class="fa-solid fa-bars-staggered"></i>
+            </button>
+        </header>
+
+        <main class="p-8 space-y-8">
+
+            <!-- Dashboard Tab -->
+            <section id="tab-stats" class="tab-content active space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-card p-8 group hover:border-gold-500/30 transition-all">
+                        <span class="text-text-secondary text-sm font-medium uppercase tracking-widest">Total
+                            Captures</span>
+                        <h3 class="text-6xl font-bold mt-2" id="stat-photos">0</h3>
+                        <div class="h-1 w-12 bg-gold-500 mt-4"></div>
+                    </div>
+                    <div class="glass-card p-8 group hover:border-green-500/30 transition-all">
+                        <span class="text-text-secondary text-sm font-medium uppercase tracking-widest">Server
+                            Uptime</span>
+                        <h3 class="text-3xl font-bold mt-2 text-green-500" id="stat-uptime">0h 0m</h3>
+                        <p class="text-[10px] text-text-secondary mt-2 tracking-widest uppercase">Live Status Available
+                        </p>
+                    </div>
+                    <div class="glass-card p-8 group hover:border-purple-500/30 transition-all">
+                        <span class="text-text-secondary text-sm font-medium uppercase tracking-widest">Local LAN
+                            IP</span>
+                        <h3 class="text-2xl font-bold mt-2 text-white truncate" id="stat-ip">Detecting...</h3>
+                        <p class="text-[10px] text-gold-500 mt-2 tracking-widest uppercase font-bold">QR Link Target</p>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8">
+                    <h4 class="font-display text-xl font-bold mb-6">Capture Trends</h4>
+                    <div id="chart"></div>
+                </div>
+            </section>
+
+            <!-- Moderation Tab -->
+            <section id="tab-photos" class="tab-content space-y-6">
+                <div id="moderation-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-6">
+                    <!-- Photos load here -->
+                </div>
+            </section>
+
+            <!-- Direct Upload Tab -->
+            <section id="tab-upload" class="tab-content">
+                <div class="max-w-2xl mx-auto space-y-8">
+                    <div id="drop-zone"
+                        class="glass-card border-dashed border-2 border-white/10 p-16 text-center hover:border-gold-500/50 transition-all cursor-pointer group">
+                        <i
+                            class="fa-solid fa-cloud-arrow-up text-7xl text-gold-500/20 group-hover:text-gold-500/50 transition-all mb-6 block"></i>
+                        <h4 class="text-xl font-bold mb-2">Drag & Drop Images</h4>
+                        <p class="text-text-secondary text-sm">Directly upload photos to the live event feed</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+                    </div>
+
+                    <div id="uploadList" class="space-y-4"></div>
+                    <button id="uploadBtn" onclick="handleUpload()"
+                        class="btn-gold w-full mt-6 shadow-xl shadow-gold-500/10">Start Mirror Upload</button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        let chart = null;
+
+        function verifyAdmin() {
+            const pass = document.getElementById('adminPasscode').value;
+            if (pass === '1234') {
+                document.getElementById('adminLock').style.display = 'none';
+                document.getElementById('sidebar').style.display = 'flex';
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                initDashboard();
+            } else {
+                alert('Passcode Invalid');
+                document.getElementById('adminPasscode').value = '';
+            }
+        }
+
+        async function initDashboard() {
+            initChart();
+            loadStats();
+            loadPhotos();
+            setInterval(loadStats, 5000);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/photos');
+                const data = await res.json();
+                document.getElementById('stat-photos').textContent = data.length;
+                document.getElementById('stat-ip').textContent = `Cloud Active`;
+                document.getElementById('stat-uptime').textContent = `Sync On`;
+            } catch (err) { console.error('Stats error:', err); }
+        }
+
+        async function loadPhotos() {
+            try {
+                const res = await fetch('/api/admin/photos');
+                const photos = await res.json();
+                const grid = document.getElementById('moderation-grid');
+                grid.innerHTML = '';
+
+                photos.forEach(img => {
+                    const card = document.createElement('div');
+                    card.className = 'image-card group';
+                    card.innerHTML = `
+                        <img src="${img.url}" loading="lazy">
+                        <div class="overlay p-4">
+                            <button onclick="deletePhoto('${img.drive_id}')" class="w-10 h-10 bg-red-600 rounded-lg text-white shadow-xl hover:bg-red-500 transition-all">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <span class="text-[10px] text-white font-bold opacity-60 uppercase">${img.name.substring(0, 10)}...</span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) { console.error('Moderation error:', err); }
+        }
+
+        async function deletePhoto(id) {
+            if (confirm('Permanently delete this photo from Cloud?')) {
+                await fetch(`/api/admin/photo/${id}`, { method: 'DELETE' });
+                loadPhotos();
+                loadStats();
+            }
+        }
+
+        let stagedFiles = [];
+
+        async function handleUpload() {
+            const btn = document.getElementById('uploadBtn');
+            const input = document.getElementById('fileInput');
+            
+            // Combine files from input and drag-drop
+            const allFiles = [...stagedFiles, ...Array.from(input.files)];
+            
+            if (allFiles.length === 0) return alert('Select or Drag images to upload');
+
+            const formData = new FormData();
+            allFiles.forEach(file => formData.append('photos', file));
+
+            btn.disabled = true;
+            btn.textContent = '📦 Mirroring to Live Feed...';
+
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                if(!res.ok) throw new Error("Upload failed");
+                
+                btn.textContent = '✅ Success! Refreshing...';
+                
+                // Reset
+                stagedFiles = [];
+                input.value = '';
+                document.getElementById('uploadList').innerHTML = '';
+                
+                setTimeout(() => {
+                    loadPhotos();
+                    loadStats();
+                    btn.disabled = false;
+                    btn.textContent = 'Start Mirror Upload';
+                    switchTab('photos'); // Jump to moderation to see results
+                }, 1500);
+            } catch (err) { 
+                alert('Upload failed. Connection lost.'); 
+                btn.disabled = false; 
+                btn.textContent = 'Retry Upload';
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            const activeBtn = Array.from(document.querySelectorAll('.nav-link')).find(b => b.onclick.toString().includes(tabId));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const titles = { stats: 'System Dashboard', photos: 'Live Moderation', upload: 'Direct Mirror Upload' };
+            document.getElementById('tabTitle').textContent = titles[tabId];
+
+            if (tabId === 'photos') loadPhotos();
+            document.getElementById('sidebar').classList.remove('open');
+        }
+
+        function initChart() {
+            const options = {
+                series: [{ name: 'Captures', data: [] }],
+                chart: { height: 350, type: 'area', toolbar: { show: false }, background: 'transparent', foreColor: '#8A8478', animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+                colors: ['#C8A24E'],
+                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0, stops: [0, 90, 100] } },
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 2 },
+                grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 4 },
+                xaxis: { 
+                    categories: [], 
+                    labels: { style: { fontSize: '10px' } },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: { labels: { style: { fontSize: '10px' } }, min: 0, forceNiceScale: true },
+                tooltip: { theme: 'dark', x: { format: 'HH:mm' } }
+            };
+            chart = new ApexCharts(document.querySelector("#chart"), options);
+            chart.render();
+        }
+
+        function updateChartWithTimeline(photos) {
+            if (!chart) return;
+
+            const now = Date.now();
+            const bucketSize = 5 * 60 * 1000; // 5 mins
+            const buckets = 12; // 1 hour total
+            
+            let timelineData = new Array(buckets).fill(0);
+            let labels = [];
+
+            // Initialize buckets
+            for (let i = buckets - 1; i >= 0; i--) {
+                const time = new Date(now - (i * bucketSize));
+                labels.push(time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+
+            // Group photos into buckets
+            photos.forEach(photo => {
+                const diff = now - photo.mtime;
+                const bucketIdx = (buckets - 1) - Math.floor(diff / bucketSize);
+                if (bucketIdx >= 0 && bucketIdx < buckets) {
+                    timelineData[bucketIdx]++;
+                }
+            });
+
+            chart.updateOptions({
+                xaxis: { categories: labels }
+            });
+            chart.updateSeries([{ data: timelineData }]);
+        }
+
+        // --- DRAG AND DROP LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            updateUploadList(e.target.files);
+        };
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, () => {
+                dropZone.classList.add('border-gold-500', 'bg-gold-500/5');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, () => {
+                dropZone.classList.remove('border-gold-500', 'bg-gold-500/5');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            stagedFiles = [...stagedFiles, ...Array.from(files)];
+            updateUploadList(stagedFiles);
+        }, false);
+
+        function updateUploadList(files) {
+            const list = document.getElementById('uploadList');
+            const count = stagedFiles.length + fileInput.files.length;
+            list.innerHTML = `
+                <div class='flex items-center justify-between bg-gold-500/10 p-4 rounded-xl border border-gold-500/20'>
+                    <span class='text-gold-500 text-sm font-bold'>
+                        <i class='fa-solid fa-file-circle-check mr-2'></i> ${count} Photos Staged
+                    </span>
+                    <button onclick="clearStaging()" class="text-[10px] uppercase font-bold text-red-500 hover:text-red-400">Clear All</button>
+                </div>
+            `;
+        }
+
+        function clearStaging() {
+            stagedFiles = [];
+            fileInput.value = '';
+            document.getElementById('uploadList').innerHTML = '';
+        }
+    </script>
+</body>
+
+</html>
