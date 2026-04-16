@@ -507,6 +507,10 @@
         let marketingShown = false;
         let stream = null;
 
+        // Global Backend Detection
+        const tunnelUrl = window.location.hash.substring(1);
+        const apiBase = tunnelUrl ? tunnelUrl : '';
+
         // Initialize History Trap
         window.onload = () => {
             if (window.history && window.history.pushState) {
