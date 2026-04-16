@@ -656,33 +656,37 @@
                     body: formData
                 });
 
-            const result = await response.json();
-            
-            if (result.matches) {
-                if (result.matches.length === 0) {
-                    alert("We couldn't find your photos yet. Please try again after a few minutes!");
-                } else {
-                    // Store the identity
-                    filteredNames = result.matches;
-                    
-                    // Cloud Mode: matches already contain the URLs
-                    if (filteredNames.length > 0 && typeof filteredNames[0] === 'object') {
-                        filteredImages = filteredNames; // Take directly from search result
-                        document.getElementById('photoCount').textContent = `${filteredImages.length} Photos`;
-                        renderGrid(filteredImages);
+                const result = await response.json();
+                
+                if (result.matches) {
+                    if (result.matches.length === 0) {
+                        alert("We couldn't find your photos yet. Please try again after a few minutes!");
                     } else {
-                        // Local Mode: fetch full list and filter
-                        await loadPhotos();
-                    }
+                        // Store the identity
+                        filteredNames = result.matches;
+                        
+                        // Cloud Mode: matches already contain the URLs
+                        if (filteredNames.length > 0 && typeof filteredNames[0] === 'object') {
+                            filteredImages = filteredNames; // Take directly from search result
+                            document.getElementById('photoCount').textContent = `${filteredImages.length} Photos`;
+                            renderGrid(filteredImages);
+                        } else {
+                            // Local Mode: fetch full list and filter
+                            await loadPhotos();
+                        }
 
-                    // If we are still on landing page, move to gallery
-                    if (document.getElementById('pageLanding').classList.contains('active')) {
-                        accessGallery();
+                        // If we are still on landing page, move to gallery
+                        if (document.getElementById('pageLanding').classList.contains('active')) {
+                            accessGallery();
+                        }
+                        closeSelfieModal();
                     }
-                    closeSelfieModal();
+                } else if (result.error) {
+                    alert(result.error);
                 }
-            } else if (result.error) {
-                alert(result.error);
+            } catch (err) {
+                console.error("Match error:", err);
+                alert("Search failed. Please ensure your PC is online.");
             }
         }
 
