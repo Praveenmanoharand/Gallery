@@ -134,11 +134,30 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 60%);
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.4) 0%, transparent 40%);
             opacity: 1;
             transition: opacity 0.4s;
             pointer-events: none;
-            /* Crucial: Let clicks pass through to the container */
+        }
+
+        .cloud-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--gold-light);
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 8px;
+            font-weight: 700;
+            display: flex;
+            items-center: center;
+            gap: 4px;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .lightbox {
@@ -727,7 +746,13 @@
                     e.stopPropagation(); // Prevent opening lightbox when clicking download
                 };
 
+                // Cloud badge indicator
+                const badge = document.createElement('div');
+                badge.className = 'cloud-badge';
+                badge.innerHTML = '<i class="fa-solid fa-cloud"></i> Cloud Live';
+
                 item.appendChild(imgEl);
+                item.appendChild(badge);
                 item.appendChild(dlBtn);
                 grid.appendChild(item);
             });
