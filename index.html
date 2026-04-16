@@ -370,7 +370,11 @@
                 const gallery = document.getElementById('pageGallery');
                 gallery.classList.add('active');
                 setTimeout(() => gallery.style.opacity = '1', 50);
-                setInterval(() => { if (filteredImages) loadPhotos(); }, 4000);
+                
+                // Load initial photos
+                loadPhotos();
+                // Start polling
+                setInterval(() => { loadPhotos(); }, 4000);
             }, 600);
         }
 
@@ -429,6 +433,8 @@
                 const result = await response.json();
                 if (result.matches && result.matches.length > 0) {
                     filteredImages = result.matches;
+                    // Store names for auto-refresh
+                    filteredNames = result.matches.map(m => m.name);
                     document.getElementById('photoCount').textContent = `${filteredImages.length} Photos`;
                     renderGrid(filteredImages);
                     if (document.getElementById('pageLanding').classList.contains('active')) accessGallery();
@@ -439,16 +445,20 @@
         }
 
         async function loadPhotos() {
-            if (filteredImages && filteredImages[0].url.startsWith('http')) return;
             try {
-                const response = await fetch(`${apiBase}/api/photos`, { headers: { 'Bypass-Tunnel-Reminder': 'true' } });
+                const response = await fetch(`${apiBase}/api/photos`);
                 const allPhotos = await response.json();
                 currentImages = allPhotos;
+                
+                // If we are filtered by face search, find their local URLs
                 if (filteredNames) {
                     filteredImages = allPhotos.filter(img => filteredNames.includes(img.name));
                     renderGrid(filteredImages);
+                } else if (!filteredImages) {
+                    // Show all photos if not searching
+                    renderGrid(allPhotos);
                 }
-            } catch (err) {}
+            } catch (err) { console.error("Load failed:", err); }
         }
 
         function renderGrid(images) {
