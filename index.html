@@ -638,17 +638,19 @@
         }
 
         async function processSelfie(formData) {
-            // Smart Backend Detection
-            const tunnelUrl = window.location.hash.substring(1);
-            const apiBase = tunnelUrl ? tunnelUrl : '';
-            
-            const response = await fetch(`${apiBase}/api/face-search`, {
-                method: 'POST',
-                headers: {
-                    'Bypass-Tunnel-Reminder': 'true'
-                },
-                body: formData
-            });
+            if (!apiBase && window.location.hostname !== 'localhost') {
+                alert("Connection Error: This gallery is not connected to a live event engine. Please scan the official QR code provided at the event.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBase}/api/face-search`, {
+                    method: 'POST',
+                    headers: {
+                        'Bypass-Tunnel-Reminder': 'true'
+                    },
+                    body: formData
+                });
 
             const result = await response.json();
             
